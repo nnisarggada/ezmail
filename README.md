@@ -15,7 +15,7 @@ EzMail is a collection of Spring Boot microservices that allows users to send em
 +----------------+        +----------------+        +----------------+
 ```
 
-Each microservice has its own dedicated database for data persistence and isolation.
+All microservices share a centralized PostgreSQL database instance, with each service using its own schema for data isolation.
 
 ## Microservices
 
@@ -33,13 +33,13 @@ Each microservice has its own dedicated database for data persistence and isolat
 - **Prometheus**: Collects metrics for monitoring
 - **Grafana**: Provides visualization and dashboards for performance tracking
 - **Docker**: Containerization for deploying microservices
-- **Dedicated Databases**: Each microservice has its own database for data persistence
+- **Centralized PostgreSQL Database**: A single PostgreSQL instance running in Docker, with each microservice using its own schema for data separation and security
 
 ## Example Endpoints
 
 ### User Service
 ```http
-GET /user/account
+GET /user
 ```
 **Description:** Get user details (Requires JWT)
 
@@ -50,7 +50,7 @@ GET /user/token
 
 ### Email Service
 ```http
-POST /email/send?token={token}
+POST /email/send?token=<api-token>
 ```
 **Description:** Sends an email (Requires API Token)
 ```json
@@ -87,7 +87,8 @@ POST /billing/upgrade
 1. Build microservices using Maven
 2. Create Docker images
 3. Deploy using Docker Compose or Kubernetes
-4. Configure Prometheus and Grafana for monitoring
+4. Deploy a centralized PostgreSQL instance in Docker
+5. Configure Prometheus and Grafana for monitoring
 
 ---
 This document serves as an initial reference for EzMail's architecture. More details on implementation and deployment will be added as the project evolves.
