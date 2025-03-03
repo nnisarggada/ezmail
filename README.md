@@ -1,94 +1,185 @@
-# EzMail - Architecture Overview
+# EzMail - Microservice-Based Email Service
 
-## Overview
-EzMail is a collection of Spring Boot microservices that allows users to send emails via API. It includes authentication, email tracking, billing, and API usage monitoring. The system is containerized using Docker and features monitoring with Grafana and Prometheus.
+EzMail is a microservice-based email-sending service similar to EmailJS. It provides an API for sending emails, managing users, handling billing, and monitoring system performance.
 
-## Architecture Diagram
-```
-+----------------+        +----------------+        +----------------+
-|  API Gateway  | -----> |  User Service  | -----> |  Billing       |
-+----------------+        +----------------+        +----------------+
-       |                          |                          |
-       v                          v                          v
-+----------------+        +----------------+        +----------------+
-|  Email Service | -----> |  Monitoring    | -----> |  Registry      |
-+----------------+        +----------------+        +----------------+
-```
+## **Architecture**
+EzMail consists of multiple microservices, each handling a specific function. These services interact with a central PostgreSQL database.
 
-All microservices share a centralized PostgreSQL database instance, with each service using its own schema for data isolation.
+### **Microservices**
+1. **User Service** - Manages user authentication and profiles.
+2. **Email Service** - Handles email sending and logging.
+3. **Billing Service** - Tracks usage and plan subscriptions.
+4. **Gateway Service** - API Gateway to route requests.
+5. **Registry Service** - Service discovery using Eureka.
+6. **Monitoring Service** - Tracks API usage via Grafana + Prometheus.
 
-## Microservices
+## **Flow Overview**
+1. **User Signup & Authentication**
+   - Users register and get a **non-expiring API token**.
+   - JWT + refresh tokens handle authentication.
+   
+2. **Sending Emails**
+   - Users send emails via the API Gateway.
+   - The Email Service processes and logs the request.
 
-1. **User Service** (Manages user accounts, API token usage, and account details)
-2. **Email Service** (Processes and sends emails, tracks sent mail, and logs data)
-3. **Billing Service** (Manages different usage tiers, tracks API usage, and processes payments)
-4. **Monitoring Service** (Includes Grafana and Prometheus for observability)
-5. **Registry Service** (Eureka-based service discovery)
-6. **Gateway Service** (Manages API authentication and routing)
+3. **Billing & Usage Tracking**
+   - Billing Service monitors emails sent against plan limits.
+   - Users can upgrade plans via API.
 
-## Infrastructure Components
-
-- **Eureka**: Service discovery for microservices
-- **API Gateway**: Central entry point for managing authentication and routing
-- **Prometheus**: Collects metrics for monitoring
-- **Grafana**: Provides visualization and dashboards for performance tracking
-- **Docker**: Containerization for deploying microservices
-- **Centralized PostgreSQL Database**: A single PostgreSQL instance running in Docker, with each microservice using its own schema for data separation and security
-
-## Example Endpoints
-
-### User Service
-```http
-GET /user
-```
-**Description:** Get user details (Requires JWT)
-
-```http
-GET /user/token
-```
-**Description:** Retrieve API token (Requires JWT)
-
-### Email Service
-```http
-POST /email/send?token=<api-token>
-```
-**Description:** Sends an email (Requires API Token)
-```json
-{
-  "to": "recipient@example.com",
-  "subject": "Hello",
-  "body": "This is a test email"
-}
-```
-
-### Billing Service
-```http
-GET /billing/usage
-```
-**Description:** Retrieves the current usage and plan details (Requires JWT)
-
-```http
-POST /billing/upgrade
-```
-**Description:** Upgrade the user's plan (Requires JWT)
-```json
-{
-  "plan": "premium"
-}
-```
-
-## Monitoring
-
-- **Prometheus Metrics Endpoint**: `/actuator/prometheus`
-- **Grafana Dashboard**: Monitors API requests, response times, failures, and billing metrics
-
-## Deployment
-
-1. Build microservices using Maven
-2. Create Docker images
-3. Deploy using Docker Compose or Kubernetes
-4. Deploy a centralized PostgreSQL instance in Docker
-5. Configure Prometheus and Grafana for monitoring
+4. **Monitoring & Logs**
+   - API calls and errors are logged using Grafana + Prometheus.
 
 ---
-This document serves as an initial reference for EzMail's architecture. More details on implementation and deployment will be added as the project evolves.
+
+## **Microservices & Endpoints**
+### **1. User Service (Authentication & Account Management)**
+#### **Entity: User**
+| Field      | Type    |
+|-----------|--------|
+| id        | UUID   |
+| email     | String (Unique) |
+| password  | String (Hashed) |
+| sendAs    | String |
+| plan      | Enum (FREE, BASIC, PRO) |
+| apiToken  | String (Non-expiring) |
+| createdAt | Timestamp |
+
+#### **Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **POST** | `/user/signup` | Register a new user |
+| **POST** | `/user/login` | Authenticate user, returns JWT & refresh token |
+| **POST** | `/user/refresh-token` | Generate a new JWT using refresh token |
+| **GET**  | `/user/profile` | Get user details (requires JWT) |
+| **PATCH** | `/user/update` | Update user profile |
+| **POST** | `/user/logout` | Revoke refresh token |
+
+### **2. Email Service (Handles Sending Emails & Logs)**
+#### **Entity: Email**
+| Field    | Type        |
+|---------|------------|
+| id      | UUID       |
+| userId  | UUID (FK to User) |
+| from    | String     |
+| to      | String     |
+| subject | String     |
+| body    | Text       |
+| status  | Enum (SENT, FAILED, PENDING) |
+| sentAt  | Timestamp |
+
+#### **Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **POST** | `/email/send` | Send an email (Requires API Token or JWT) |
+| **GET** | `/email/logs` | Get all sent emails for the user |
+| **GET** | `/email/logs/{id}` | Get details of a specific email |
+| **GET** | `/email/usage` | Get email sending usage statistics |
+
+### **3. Billing Service (Handles Plans & Usage)**
+#### **Entity: Billing**
+| Field       | Type        |
+|------------|------------|
+| id         | UUID       |
+| userId     | UUID (FK to User) |
+| plan       | Enum (FREE, BASIC, PRO) |
+| emailsSent | Integer    |
+| maxLimit   | Integer    |
+| renewalDate| Timestamp  |
+
+#### **Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **GET** | `/billing/usage` | Get email sending usage statistics |
+| **GET** | `/billing/plan` | Get current plan details |
+| **POST** | `/billing/upgrade` | Upgrade to a new plan |
+| **POST** | `/billing/webhook` | Handle payments via webhook |
+
+### **4. Gateway Service (API Gateway)**
+Handles authentication and forwards requests to respective microservices.
+
+#### **Endpoints**
+| Method | Endpoint | Forwards To |
+|--------|----------|-------------|
+| **POST** | `/api/user/signup` | `/user/signup` |
+| **POST** | `/api/user/login` | `/user/login` |
+| **GET** | `/api/email/logs` | `/email/logs` |
+| **POST** | `/api/email/send` | `/email/send` |
+| **GET** | `/api/billing/usage` | `/billing/usage` |
+
+### **5. Registry Service (Eureka)**
+Handles service discovery.
+
+#### **Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **GET** | `/eureka/apps` | Get all registered services |
+
+### **6. Monitoring Service (Grafana + Prometheus)**
+Tracks system metrics and performance.
+
+#### **Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **GET** | `/monitoring/metrics` | Get system metrics |
+| **GET** | `/monitoring/logs` | Get application logs |
+
+---
+
+## **Folder Structure**
+Each microservice follows this structure:
+```
+microservice-name/
+│── controller/        # API Endpoints (Routes)
+│── service/           # Business Logic
+│   ├── Service.java
+│   ├── ServiceImpl.java
+│── entity/            # Database Models (Beans)
+│── repository/        # Database Access Layer
+│── config/            # Configuration Files (JWT, DB)
+│── main.java          # Entry Point
+```
+
+---
+
+## **Security & Authentication**
+- **User Login** returns **JWT** & **Refresh Token**.
+- **JWT** is used for authentication (expires every X minutes).
+- **Refresh Token** allows getting a new JWT without logging in.
+- **API Token (non-expiring)** is used for email sending.
+- API Gateway validates JWT before forwarding requests.
+
+---
+
+## **Tech Stack**
+- **Backend:** Spring Boot (Java)
+- **Database:** PostgreSQL
+- **Auth:** JWT & Refresh Tokens
+- **API Gateway:** Spring Cloud Gateway
+- **Service Registry:** Eureka
+- **Monitoring:** Grafana + Prometheus
+- **Queue (Optional for async email processing):** RabbitMQ or Kafka
+
+---
+
+## **Flow Summary**
+1. User registers → Gets API token & JWT.
+2. User logs in → Gets JWT & Refresh token.
+3. User sends email → API Gateway forwards to Email Service.
+4. Email Service sends mail → Logs email & updates Billing.
+5. Billing tracks usage → Prevents exceeding limits.
+6. Monitoring tracks API calls → Alerts on failures.
+
+---
+
+## **Contributions & Issues**
+For feature requests, issues, or contributions, open a pull request or create an issue.
+
+---
+
+## 📜 License
+
+This project is licensed under the GNU General Public License v3 - see the [LICENSE](LICENSE.md) file for details.
+
+## 💡 Author
+
+Created by **[Nnisarg Gada](https://nnisarg.in)**. Feel free to reach via [contact@nnisarg.in](mailto:contact@nnisarg.in)!

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ezmail_final.iml" filepath="$PROJECT_DIR$/.idea/ezmail_final.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ezmail.iml" filepath="$PROJECT_DIR$/.idea/ezmail.iml" />
     </modules>
   </component>
 </project>
