@@ -1,7 +1,7 @@
-package in.nnisarg.email.Controller;
+package in.nnisarg.email.controller;
 
-import in.nnisarg.email.Entity.Email;
-import in.nnisarg.email.Repository.EmailRepository;
+import in.nnisarg.email.entity.Email;
+import in.nnisarg.email.repository.EmailRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/send")
+@RequestMapping("/email")
 public class EmailController {
 
     @Autowired
@@ -17,8 +17,8 @@ public class EmailController {
 
     @PostMapping
     public ResponseEntity<String> sendEmail(@RequestParam String sender,
-                                            @RequestParam String receiver,
-                                            @RequestParam String message) {
+            @RequestParam String receiver,
+            @RequestParam String message) {
         Email email = new Email();
         email.setSender(sender);
         email.setReceiver(receiver);

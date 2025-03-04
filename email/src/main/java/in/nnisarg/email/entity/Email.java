@@ -1,4 +1,4 @@
-package in.nnisarg.email.Entity;
+package in.nnisarg.email.entity;
 
 import jakarta.persistence.*;
 
